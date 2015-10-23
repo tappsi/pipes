@@ -34,7 +34,7 @@ defmodule Pipes.Pipe do
     case Pipeline.with_connection(conn_pool, fn conn ->
           {:ok, channel} = Channel.open(conn)
 
-          Process.monitor(channel.pid)
+          ref = Process.monitor(channel.pid)
 
           queue_name     = pipeline.amqp[:queue]
           exchange_name  = pipeline.amqp[:exchange]
@@ -55,10 +55,10 @@ defmodule Pipes.Pipe do
           :ok = Confirm.select(channel)
 
           {:ok, consumer_tag} = Basic.consume(channel, queue_name, self, consume_opts)
-          {:ok, channel, consumer_tag}
+          {:ok, channel, ref, consumer_tag}
         end) do
-      {:ok, channel, consumer_tag} ->
-        {:ok, %{channel: channel, consumer_tag: consumer_tag,
+      {:ok, channel, ref, consumer_tag} ->
+        {:ok, %{channel: channel, consumer_tag: consumer_tag, ref: ref,
                 pipeline: pipeline, pid: self, consumer: consumer}}
       {:error, :disconnected} ->
         {:stop, :disconnected}
@@ -66,11 +66,11 @@ defmodule Pipes.Pipe do
   end
 
   @doc false
-  def handle_info(:stop_pipe, _from, %{channel: channel, consumer_tag: consumer_tag}=state) do
+  def handle_info(:stop_pipe, _from, %{channel: channel, consumer_tag: consumer_tag, ref: ref}=state) do
     {:ok, ^consumer_tag} = Basic.cancel(channel, consumer_tag)
     receive do
       {:basic_cancel_ok, %{consumer_tag: ^consumer_tag}} ->
-        Process.demonitor(state.channel.pid)
+        Process.demonitor(ref)
         Channel.close(channel)
         {:stop, :normal, :ok, state}
     end
@@ -90,9 +90,9 @@ defmodule Pipes.Pipe do
     {:stop, :normal, :ok, state}
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, reason}, %{channel: %{pid: pid}} = state) do
+  def handle_info({:DOWN, _ref, :process, pid, reason}, %{channel: %{pid: pid}, ref: ref} = state) do
     Logger.error "Channel down: #{inspect reason}"
-    Process.demonitor(pid)
+    Process.demonitor(ref)
 
     {:stop, {:shutdown, reason}, state}
   end

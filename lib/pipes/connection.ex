@@ -6,7 +6,7 @@ defmodule Pipes.Connection do
 
   alias Pipes.Pipeline
 
-  @reconnect_after_ms 5_000
+  @reconnect_ms 5_000
 
   # GenServer callbacks
 
@@ -35,28 +35,28 @@ defmodule Pipes.Connection do
         Process.monitor(conn.pid)
         {:noreply, %{state| status: :connected, connection: conn}}
       {:error, reason} ->
-        :timer.send_after(@reconnect_after_ms, :connect)
-        Logger.error "Reconnecting after #{inspect @reconnect_after_ms}: #{inspect reason}"
+        :timer.send_after(@reconnect_ms, :connect)
+        Logger.error "Reconnecting after #{inspect @reconnect_ms}: #{inspect reason}"
         {:noreply, state}
     end
   end
 
   def handle_info({:DOWN, _ref, :process, _pid, reason}, %{status: :connected}=state) do
-    Logger.error "Lost connection: #{inspect reason}. Trying to reconnect after #{inspect @reconnect_after_ms}ms..."
-    :timer.send_after(@reconnect_after_ms, :connect)
+    Logger.error "Lost connection: #{inspect reason}. Trying to reconnect after #{inspect @reconnect_ms}ms..."
+    :timer.send_after(@reconnect_ms, :connect)
 
     {:noreply, %{state| connection: nil, status: :disconnected}}
   end
 
   def handle_info({:EXIT, _pid, :shutdown}, %{connection: _conn, queue: _queue, status: :connected}=state) do
-    Logger.error "Lost connection. Trying to reconnect after #{inspect @reconnect_after_ms}ms..."
-    :timer.send_after(@reconnect_after_ms, :connect)
+    Logger.error "Lost connection. Trying to reconnect after #{inspect @reconnect_ms}ms..."
+    :timer.send_after(@reconnect_ms, :connect)
 
     {:noreply, %{state| connection: nil, status: :disconnected}}
   end
 
   def handle_info(message, _from, state) do
-    IO.warn "Unhandled message: #{inspect message}"
+    Logger.warn "Unhandled message: #{inspect message}"
     {:noreply, state}
   end
 

@@ -80,19 +80,19 @@ defmodule Pipes.Pipeline do
   end
 
   defp get_pipeline_name(pipeline) do
-    [{name, _}] = all() |> Enum.filter fn {_, pid} -> pid == pipeline end
+    [{name, _}] = all() |> Enum.filter(fn {_, pid} -> pid == pipeline end)
     name
   end
 
   defp get_pipeline_pid(pipeline) do
-    [{_, pid}] = all() |> Enum.filter fn {name, _} -> name == pipeline end
+    [{_, pid}] = all() |> Enum.filter(fn {name, _} -> name == pipeline end)
     pid
   end
 
   defp all_pipelines do
     @pipes_sup
     |> Supervisor.which_children
-    |> Enum.map fn {name, pid, _, _} -> {name, pid} end
+    |> Enum.map(fn {name, pid, _, _} -> {name, pid} end)
   end
 
   defp get_resource(pool, retry_count, max_retries, res) when res in @resources do

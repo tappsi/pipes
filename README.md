@@ -20,27 +20,29 @@ $ MIX_ENV=docs mix docs
 ## Usage
 
 ```elixir
-defmodule Playground do
-  alias Pipes.Pipeline
+# In config/config.exs
+config :my_app, MyApp.Consumer,
+  %{name: "my_app_pipeline",
+    amqp: %{exchange: "a_exchange", queue: "queue_a",
+            uri: "amqp://guest:guest@localhost"}}
 
-  defmodule Consumer do
-    def consume(payload) do
-      IO.puts "Yay got: #{inspect payload}"
-    end
+# In your supervisor
+defmodule MyApp.Supervisor do
+  use Supervisor
+
+  def init(_args) do
+    children = [worker(MyApp.Consumer, [])]
+    supervise(children, [strategy: :one_for_one])
   end
+end
 
-  pipeline_a_specs = %Pipeline{name: "a",
-                               amqp: %{uri: "amqp://guest:guest@localhost",
-                                       queue: "queue_a",
-                                       exchange: "a_exchange"}}
+# In your consumer module
+defmodule MyApp.Consumer do
+  use Pipes, otp_app: :my_app
 
-  {:ok, pipeline_a} = Pipeline.start(pipeline_a_specs)
-  {:ok, consumer_a} = Pipeline.add_pipe(pipeline_a, Consumer)
-
-  Pipeline.all()
-  Pipeline.all_pipes(pipeline_a)
-
-  Pipeline.publish "a", "a_exchange", "test"
+  def consume(payload) do
+    do_something(payload)
+  end
 end
 ```
 
@@ -51,4 +53,4 @@ For general guides on contributing to the project please see
 
 ## License
 
-Copyright (c) 2015 Tappsi S.A.S
+Copyright (c) 2015-2016 Tappsi S.A.S

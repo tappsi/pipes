@@ -33,11 +33,11 @@ defmodule Pipes.Mixfile do
   end
 
   defp deps do
-    [{:amqp, "~> 0.1.4"},
-     {:poolboy, "~> 1.5"},
+    [{:amqp, "~> 0.2.0-pre.2"},
+     {:poolboy, "~> 1.5.1"},
 
      # Documentation
-     {:ex_doc, "~> 0.11", only: :docs},
-     {:earmark, "~> 0.2", only: :docs}]
+     {:ex_doc, "~> 0.15", only: :docs, runtime: false},
+     {:earmark, "~> 1.1.1", only: :docs, runtime: false}]
   end
 end

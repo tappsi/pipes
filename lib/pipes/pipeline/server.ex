@@ -10,7 +10,7 @@ defmodule Pipes.Pipeline.Server do
   # GenServer callbacks
 
   def start_link(pipeline, conn_pool, pub_pool, opts) do
-    server_name = {:local, pipeline.name <> "_server" |> String.to_atom}
+    server_name = pipeline.name <> "_server" |> String.to_atom
     server_args = [pipeline, server_name, conn_pool, pub_pool, opts]
 
     GenServer.start_link(__MODULE__, server_args, name: server_name)

@@ -1,5 +1,6 @@
 defmodule Pipes.Publisher do
   @moduledoc false
+
   use GenServer
   use AMQP
   require Logger
@@ -16,31 +17,31 @@ defmodule Pipes.Publisher do
 
   def init([publisher_pool]) do
     Process.flag(:trap_exit, true)
-    send self, :connect
+    Kernel.send self(), :connect
     {:ok, %{status: :disconnected, channel: nil, pool: publisher_pool, ref: nil}}
   end
 
-  def handle_call(:channel, _from, %{status: :connected, channel: channel}=state) do
+  def handle_call(:channel, _from, %{status: :connected, channel: channel} = state) do
     {:reply, {:ok, channel}, state}
   end
 
-  def handle_call(:channel, _from, %{status: :disconnected}=state) do
+  def handle_call(:channel, _from, %{status: :disconnected} = state) do
     {:reply, {:error, :disconnected}, state}
   end
 
-  def handle_info(:connect, %{status: :disconnected}=state) do
+  def handle_info(:connect, %{status: :disconnected} = state) do
     case Pipeline.with_connection(state.pool, &Channel.open/1) do
       {:ok, channel} ->
         ref = Process.monitor(channel.pid)
         {:noreply, %{state | channel: channel, status: :connected, ref: ref}}
       _ ->
-        Logger.warning "Failed to create a channel, retrying after #{inspect @reconnect_ms}ms..."
+        Logger.warn "Failed to create a channel, retrying after #{inspect @reconnect_ms}ms..."
         :timer.send_after(@reconnect_ms, :connect)
         {:noreply, %{state | channel: nil, status: :disconnected}}
     end
   end
 
-  def handle_info({:DOWN, _ref, :process, pid, _reason}, %{channel: %{pid: pid}, ref: ref}=state) do
+  def handle_info({:DOWN, _ref, :process, pid, _reason}, %{channel: %{pid: pid}, ref: ref} = state) do
     Process.demonitor(ref)
     :timer.send_after(@reconnect_ms, :connect)
     {:noreply, %{state| status: :disconnected, channel: nil}}

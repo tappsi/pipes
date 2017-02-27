@@ -54,12 +54,12 @@ defmodule Pipes.Pipe do
           :ok = Basic.qos(channel, prefetch_count: prefetch_count)
           :ok = Confirm.select(channel)
 
-          {:ok, consumer_tag} = Basic.consume(channel, queue_name, self, consume_opts)
+          {:ok, consumer_tag} = Basic.consume(channel, queue_name, self(), consume_opts)
           {:ok, channel, ref, consumer_tag}
         end) do
       {:ok, channel, ref, consumer_tag} ->
         {:ok, %{channel: channel, consumer_tag: consumer_tag, ref: ref,
-                pipeline: pipeline, pid: self, consumer: consumer}}
+                pipeline: pipeline, pid: self(), consumer: consumer}}
       {:error, :disconnected} ->
         {:stop, :disconnected}
     end

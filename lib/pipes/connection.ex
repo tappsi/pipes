@@ -16,20 +16,19 @@ defmodule Pipes.Connection do
 
   def init([queue]) do
     Process.flag(:trap_exit, true)
-
-    send(self, :connect)
+    Kernel.send self(), :connect
     {:ok, %{queue: queue, status: :disconnected, connection: nil}}
   end
 
-  def handle_call(:connection, _from, %{status: :connected, connection: conn}=state) do
+  def handle_call(:connection, _from, %{status: :connected, connection: conn} = state) do
     {:reply, {:ok, conn}, state}
   end
 
-  def handle_call(:connection, _from, %{status: :disconnected}=state) do
+  def handle_call(:connection, _from, %{status: :disconnected} = state) do
     {:reply, {:error, :disconnected}, state}
   end
 
-  def handle_info(:connect, %{queue: %Pipeline{amqp: amqp}}=state) do
+  def handle_info(:connect, %{queue: %Pipeline{amqp: amqp}} = state) do
     case Connection.open(amqp[:uri]) do
       {:ok, conn} ->
         Process.monitor(conn.pid)
@@ -41,14 +40,14 @@ defmodule Pipes.Connection do
     end
   end
 
-  def handle_info({:DOWN, _ref, :process, _pid, reason}, %{status: :connected}=state) do
+  def handle_info({:DOWN, _ref, :process, _pid, reason}, %{status: :connected} = state) do
     Logger.error "Lost connection: #{inspect reason}. Trying to reconnect after #{inspect @reconnect_ms}ms..."
     :timer.send_after(@reconnect_ms, :connect)
 
     {:noreply, %{state| connection: nil, status: :disconnected}}
   end
 
-  def handle_info({:EXIT, _pid, :shutdown}, %{connection: _conn, queue: _queue, status: :connected}=state) do
+  def handle_info({:EXIT, _pid, :shutdown}, %{connection: _conn, queue: _queue, status: :connected} = state) do
     Logger.error "Lost connection. Trying to reconnect after #{inspect @reconnect_ms}ms..."
     :timer.send_after(@reconnect_ms, :connect)
 

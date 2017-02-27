@@ -9,16 +9,16 @@ defmodule Pipes.Mixfile do
      source_url: "https://github.com/tappsi/pipes",
      homepage_url: "https://github.com/tappsi/pipes",
      version: @version,
-     description: description,
-     docs: docs,
-     elixir: "~> 1.2",
+     description: description(),
+     docs: docs(),
+     elixir: "~> 1.4",
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
-     deps: deps]
+     deps: deps()]
   end
 
   def application do
-    [applications: [:logger, :amqp, :poolboy],
+    [extra_applications: [:logger],
      mod: {Pipes, []}]
   end
 

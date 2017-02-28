@@ -41,7 +41,7 @@ defmodule Pipes do
         pipeline_specs  = %Pipeline{name: pipeline_config.name,
                                     amqp: pipeline_config.amqp}
 
-        send self, :start_pipeline
+        Kernel.send self(), :start_pipeline
 
         {:ok, %{pipeline: nil, consumers: nil, specs: pipeline_specs}}
       end

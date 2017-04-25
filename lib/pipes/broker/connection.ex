@@ -21,8 +21,8 @@ defmodule Pipes.Broker.Connection do
       {:error, :no_uri} ->
         Logger.error("Broker `uri` is not definded, cannot stablish connection!")
         {:stop, :normal}
-      _ ->
-        raise "Broker connection failed!"
+      error ->
+        raise "Broker connection error: #{error}"
     end
   end
 

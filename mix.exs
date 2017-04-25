@@ -29,7 +29,7 @@ defmodule Pipes.Mixfile do
   end
 
   defp deps do
-    [{:amqp, "~> 0.2.0-pre.2"},
+    [{:amqp, "~> 0.2.1"},
      {:poolboy, "~> 1.5.1"},
 
      # Documentation

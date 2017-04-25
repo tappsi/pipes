@@ -1,5 +1,7 @@
 use Mix.Config
 
-config :pipes,
-  manager: Pipes.Broker.DummyManager,
-  connection: Pipes.Broker.DummyConnection
+if Mix.env == :test do
+  config :pipes,
+    manager: Pipes.Broker.DummyManager,
+    connection: Pipes.Broker.DummyConnection
+end

@@ -4,6 +4,8 @@ defmodule Pipes.Consumer do
     quote bind_quoted: [opts: opts] do
       use GenServer
 
+      alias Pipes.Utils
+
       @otp_app opts[:otp_app]
       @module __MODULE__
 
@@ -14,7 +16,7 @@ defmodule Pipes.Consumer do
       end
 
       def init(_args) do
-        config      = Pipes.get_config(@otp_app, @module)
+        config      = Utils.get_config(@otp_app, @module)
         opts        = [config, @module]
         max_workers = config[:max_workers] || 4
 

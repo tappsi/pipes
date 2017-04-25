@@ -4,8 +4,6 @@ defmodule Pipes.Broker.Connection do
 
   require Logger
 
-  @retry_time 5_000
-
   # API
 
   def start_link(opts) do
@@ -15,12 +13,16 @@ defmodule Pipes.Broker.Connection do
   # GenServer callbacks
 
   def init([opts]) do
-    case Map.get(opts[:amqp], :uri) do
-      nil ->
+
+    with {:ok, uri}  <- get_uri(opts),
+         {:ok, conn} <- AMQP.Connection.open(uri) do
+      {:ok, %{status: :connected, conn: conn, uri: uri}}
+    else
+      {:error, :no_uri} ->
         Logger.error("Broker `uri` is not definded, cannot stablish connection!")
         {:stop, :normal}
-      uri ->
-        {:ok, connect(%{uri: uri, status: :disconnected, conn: nil})}
+      error ->
+        raise "Broker connection error: #{error}"
     end
   end
 
@@ -31,20 +33,14 @@ defmodule Pipes.Broker.Connection do
     {:reply, {:error, :disconnected}, state}
   end
 
-  def handle_info(:reconnect, %{status: :disconnected} = state) do
-    {:noreply, connect(state)}
-  end
+ # Internal Functions
 
-  # Internal functions
-
-  defp connect(state) do
-    with {:ok, conn} <- AMQP.Connection.open(state.uri) do
-      %{state| status: :connected, conn: conn}
-    else
-      error ->
-        Logger.warn "Broker connection problem: #{inspect error}, retry in #{@retry_time}ms..."
-        Process.send_after(self(), :reconnect, @retry_time)
-        %{state| status: :disconnected, conn: nil}
+  defp get_uri(opts) do
+    case Map.get(opts[:amqp], :uri) do
+      nil ->
+        {:error, :no_uri}
+      uri ->
+        {:ok, uri}
     end
   end
 end

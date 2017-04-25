@@ -1,12 +1,11 @@
 defmodule Pipes.Producer.Worker do
   use GenServer
-  use AMQP
 
   require Logger
 
-  @exchange_opts [durable: true, auto_delete: false]
   @max_retries 5
   @amqp_sup Pipes.BrokerSupervisor
+  @manager Application.get_env(:pipes, :manager, Pipes.Broker.Manager)
 
   # API
 
@@ -25,17 +24,23 @@ defmodule Pipes.Producer.Worker do
   def init([opts]) do
     Process.flag(:trap_exit, true)
     send(self(), :prepare_producer)
-    {:ok, %{channel: nil, chann_ref: nil, exchange: nil, config: opts}}
+    exchange = get_in(opts, [:amqp, :exchange])
+    {:ok, %{channel: nil, chann_ref: nil, exchange: exchange, config: opts}}
   end
 
   def handle_call({:publish, payload}, _from, state) do
-    {:reply, Basic.publish(state.channel, state.exchange, "", payload), state}
+    {:reply, @manager.publish(state.channel, state.exchange, "", payload), state}
   end
 
   def handle_info(:prepare_producer, state) do
     {:ok, pid}   = Supervisor.start_child(@amqp_sup, [state.config])
     {:ok, conn}  = GenServer.call(pid, :get_connection)
-    {:noreply, prepare_producer(state, conn)}
+    {:ok, channel} =
+      get_in(state, [:config, :amqp])
+      |> @manager.prepare_producer(conn)
+
+    ref = Process.monitor(channel.pid)
+    {:noreply, %{state| channel: channel, chann_ref: ref}}
   end
   def handle_info({:DOWN, _ref, :process, pid, reason},
   %{channel: %{pid: pid}, ref: ref} = state) do
@@ -57,17 +62,5 @@ defmodule Pipes.Producer.Worker do
         do_publish(pool, retry_count - 1, msg)
       _ -> :error
     end
-  end
-
-  defp prepare_producer(state, conn) do
-    {:ok, chann} = Channel.open(conn)
-    amqp = state.config[:amqp]
-    ref = Process.monitor(chann.pid)
-
-    exchange_opts = amqp[:exchange_opts] || @exchange_opts
-    exchange_type = exchange_opts[:type] || :direct
-    :ok = Exchange.declare(chann, amqp.exchange, exchange_type, exchange_opts)
-
-    %{state| channel: chann, chann_ref: ref, exchange: amqp.exchange}
   end
 end

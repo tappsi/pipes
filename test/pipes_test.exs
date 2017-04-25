@@ -26,9 +26,10 @@ defmodule PipesTest do
       use Pipes.Producer, otp_app: :pipes
     end
 
+
     test "default publish returns :ok" do
       assert {:ok, _pid} = TestProducer.start_link()
-      assert {:ok, _} = TestProducer.publish("payload")
+      assert :ok = TestProducer.publish("payload")
     end
   end
 end

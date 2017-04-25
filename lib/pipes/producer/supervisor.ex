@@ -1,13 +1,15 @@
 defmodule Pipes.Producer.Supervisor do
   use Supervisor
 
+  alias Pipes.Utils
+
   @sup_name Producer.Supervisor
   @worker_module Pipes.Producer.Worker
 
   def start_pool(opts) do
-    size = opts[:max_workers] || 1
-    pool_name = "#{opts[:name]}_producer" |> String.to_atom()
-    pool_specs = Pipes.config_pool(pool_name, @worker_module, size)
+    size       = opts[:max_workers] || 1
+    pool_name  = Utils.pool_name(opts[:name], :producer)
+    pool_specs = Utils.config_pool(pool_name, @worker_module, size)
 		Supervisor.start_child(@sup_name,
                            :poolboy.child_spec(pool_name, pool_specs, opts))
   end
